@@ -1,0 +1,168 @@
+---
+title: "HW 2"
+author: "Hannah Lim"
+date: "2025-01-28"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+# Bringing in packages needed.
+library(ggplot2)
+library(tidyverse)
+library(kableExtra)
+
+#Getting all the datasets.
+profs <- read.csv("profs.csv")
+bikeshare <- read.csv("bikeshare.csv")
+capmetro_UT <- read.csv("capmetro_UT.csv")
+billboard <- read.csv("billboard.csv")
+```
+
+# Problem 1:
+## Part A
+```{r}
+ggplot(profs, aes(x = eval)) + 
+  geom_histogram(bins=20) + 
+  labs(title = "Course Evaluation Scores", x = "Course Evaluation Scores", y = "Frequency")
+```
+
+## Part B
+```{r}
+ggplot(profs, aes(x=native, y=eval, fill=native)) + 
+  geom_boxplot() +
+  labs(title = "Native or Non-Native English Speaking Professor v.s. 
+       Course Evaluation Scores", x = "Native or Not", y = "Course Evaluation Scores")
+```
+
+## Part C
+```{r}
+ggplot(profs, aes(x = eval)) + 
+  geom_histogram(bins=20) + facet_wrap(~ gender, nrow=2) +
+  labs(title = "Course Evaluation Scores by Gender", x = "Course Evaluation Scores", y = "Frequency")
+```
+
+## Part D
+```{r}
+ggplot(profs, aes(x=beauty, y=eval)) + 
+  geom_point() +
+  labs(title = "Professor's Physical Attractiveness vs. 
+       Course Evaluation Scores", x = "Attractiveness", y = "Course Evaluation Scores")
+```
+
+# Problem 2:
+## Plot A
+```{r}
+avg_bike <- bikeshare %>%
+  group_by(hr) %>%
+  summarize(mean = mean(total), .groups = "drop")
+
+ggplot(avg_bike, aes(x=hr, y=mean, group=1)) + 
+  geom_line() + geom_point() +
+  labs(title = "Average Hourly Bike Rentals Across 
+       All Hours of the Day", x = "Hour of Day", y = "Average Bike Rentals")
+```
+
+## Plot B
+```{r}
+avg_bike_workingday <- bikeshare %>%
+  group_by(hr, workingday) %>%
+  summarize(mean = mean(total), .groups = "drop")
+
+ggplot(avg_bike_workingday, aes(x=hr, y=mean, group=1)) + 
+  geom_line() + geom_point() + 
+  facet_wrap(~ workingday, labeller = labeller(workingday = c("1" = "Weekday", "0" = "Weekend"))) +
+  labs(title = "Average Hourly Bike Rentals
+       on Weekends v.s. Weekdays", x = "Hour of Day", y = "Average Bike Rentals 
+       per Hour of Day")
+```
+
+## Plot C
+```{r}
+bikeshare_9AM <- bikeshare %>%
+  filter(hr == 9) %>%
+  group_by(weathersit, workingday) %>%
+  summarize(mean = mean(total), .groups = "drop")
+
+ggplot(bikeshare_9AM, aes(x=weathersit, y=mean)) + 
+  geom_bar(stat = "identity") + 
+  facet_wrap(~ workingday, labeller = labeller(workingday = c("1" = "Weekday", "0" = "Weekend/Holiday"))) +
+  labs(title = "Average Ridership During the 9 AM Hour 
+       by Weather Situation", x = "Weather Situation", y = "Average Ridership")
+```
+
+# Problem 3:
+## Part 1
+```{r}
+capmetro_UT <- mutate(capmetro_UT,
+                      day_of_week = factor(day_of_week, 
+                                           levels = c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")),
+                      month = factor(month, 
+                                     levels = c("Sep", "Oct", "Nov")))
+
+haha <- capmetro_UT %>%
+  group_by(month, hour_of_day, day_of_week) %>%
+  summarize(mean = mean(boarding), .groups = "drop") %>%
+  pivot_wider(names_from = month,
+              values_from = mean)
+
+ggplot(haha, aes(x = hour_of_day)) + 
+  geom_line(aes(y = Sep, color = "September")) + 
+  geom_line(aes(y = Oct, color = "October")) +
+  geom_line(aes(y = Nov, color = "November")) +
+  facet_grid(. ~ day_of_week) +  
+  labs(title = "Average Boardings by Hour", x = "Hour of Day", y = "Average Boarding", color = "Month")
+```
+
+## Part 2
+```{r}
+ggplot(capmetro_UT, aes(x = temperature, y = boarding, color = weekend)) +
+  geom_point() +
+  facet_wrap(~ hour_of_day) +
+  theme(axis.text.x = element_text(angle = 45)) +
+  labs(title = "Boarding v.s. Temperature Across Hour of Day", x = "Temperature", y = "Boarding")
+```
+
+# Problem 4:
+## Part A
+```{r}
+billboard_table <- billboard %>%
+  select(performer, song, weeks_on_chart) %>%
+  group_by(performer, song) %>%
+  summarize(count = max(weeks_on_chart), .groups = "drop") %>%
+  arrange(desc(count))
+
+kable(head(billboard_table, 10))
+```
+
+## Part B
+```{r}
+billboard_diversity <- billboard %>%
+  filter(year>1958 & year<2021) %>%
+  group_by(year) %>%
+  summarize(unique = length(unique(song)), .groups = "drop")
+
+ggplot(billboard_diversity, aes(x = year)) +
+  geom_line(aes(y = unique)) +
+  labs(title = "Musical Diversity of the Billboard Top 100", x = "Year", y = "Number of Unique Songs")
+```
+
+## Part C
+```{r}
+billboard_tenweeks <- billboard %>%
+  select(performer, song, weeks_on_chart) %>%
+  group_by(performer, song) %>%
+  summarize(count = max(weeks_on_chart), .groups = "drop") %>%
+  filter(count >= 10)
+
+billboard_tenweeks <- billboard_tenweeks %>%
+  group_by(performer) %>%
+  filter(length(song) >= 30) %>%
+  summarize(song_count = length(count), .groups = "drop")
+
+ggplot(billboard_tenweeks, aes(x = performer, y = song_count)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Song Counts by Performer", x = "Performer", y = "Song Count") +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+```
+
